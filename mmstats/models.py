@@ -41,7 +41,21 @@ class FieldState(object):
         self.field = field
 
 
-class BaseMmStats(threading.local):
+class MetaStats(type):
+    def __new__(cls, name, bases, attrs):
+        # if threading.local is not patched, go ahead an extend it as before
+        # otherwise, just leave the object base. this fixes a file descriptor
+        # leak when used with gevent.
+        tl = threading.local
+        if tl.__module__ != 'gevent.local' and object in bases:
+            bases = tuple([tl] + list(bases))
+
+        return super(MetaStats, cls).__new__(cls, name, bases, attrs)
+
+
+class BaseMmStats(object):
+    __metaclass__ = MetaStats
+
     """Stats models should inherit from this
 
     Optionally given a filename or label_prefix, create an MmStats instance
